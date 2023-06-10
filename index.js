@@ -27,11 +27,20 @@ async function run() {
     const classesCollection = client.db("CourseBD").collection("classes");
 
     // instructors Route
-    app.get("/classes", async (req, res) => {
+
+    app.get("/all-classes", async (req, res) => {
       const result = await classesCollection.find().toArray();
       res.send(result);
     });
-    app.post("/classes", async (req, res) => {
+    app.get("/my-classes", async (req, res) => {
+      const instructorEmail = req.query.email;
+      const query = {
+        email: instructorEmail,
+      };
+      const result = await classesCollection.find(query).toArray();
+      res.send(result);
+    });
+    app.post("/add-classes", async (req, res) => {
       const singleClass = req.body;
       console.log(singleClass);
       const result = await classesCollection.insertOne(singleClass);

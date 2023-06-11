@@ -1,6 +1,7 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 
 require("dotenv").config();
@@ -19,6 +20,26 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+const verifyJWT = (req, res, next) => {
+  const authorization = req.headers.authorization;
+  console.log(authorization);
+  if (!authorization) {
+    return res.status(401).send({ error: true, message: "Forbidden access" });
+  }
+  // bearer token
+  const token = authorization.split(" ")[1];
+  console.log(token);
+
+  jwt.verify(token, process.env.JWT_SECURE_TOKEN, (err, decoded) => {
+    if (err) {
+      return res
+        .status(401)
+        .send({ error: true, message: "unauthorized access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+};
 
 async function run() {
   try {
@@ -32,12 +53,13 @@ async function run() {
       const result = await classesCollection.find().toArray();
       res.send(result);
     });
-    app.get("/my-classes", async (req, res) => {
+    app.get("/my-classes", verifyJWT, async (req, res) => {
       const instructorEmail = req.query.email;
-      const query = {
+      console.log(instructorEmail);
+      const filter = {
         email: instructorEmail,
       };
-      const result = await classesCollection.find(query).toArray();
+      const result = await classesCollection.find(filter).toArray();
       res.send(result);
     });
     app.post("/add-classes", async (req, res) => {
@@ -45,6 +67,16 @@ async function run() {
       console.log(singleClass);
       const result = await classesCollection.insertOne(singleClass);
       res.send(result);
+    });
+
+    // JWT Route
+    app.post("/JWT", (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.JWT_SECURE_TOKEN, {
+        expiresIn: "10h",
+      });
+
+      res.send({ token });
     });
 
     // Send a ping to confirm a successful connection

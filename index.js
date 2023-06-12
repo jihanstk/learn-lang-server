@@ -96,34 +96,24 @@ async function run() {
     app.get("/user/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
       console.log(email);
-      //   if (req.decoded.email !== email) {
-      //     res.send({ admin: false });
-      //   }
+      if (req.decoded.email !== email) {
+        res.send({ error: true, message: "Unauthorize Access" });
+      }
 
       const query = { email: email };
       const result = await userCollection.findOne(query);
       //   const result = { admin: user?.role == "admin" };
       res.send(result);
     });
-    // app.get(
-    //   "/user/instructor/:email",
-    //   verifyJWT,
-    //   verifyInstructor,
-    //   async (req, res) => {
-    //     const email = req.params.email;
-    //     if (req.decoded.email !== email) {
-    //       res.send({ instructor: false });
-    //     }
 
-    //     const query = { email: email };
-    //     const user = await userCollection.findOne(query);
-    //     const result = { instructor: user?.role == "instructor" };
-    //     res.send(result);
-    //   }
-    // );
     app.post("/user", async (req, res) => {
       const userInfo = req.body;
       console.log(userInfo);
+      const query = { email: user.email };
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "user already exists" });
+      }
       const result = await userCollection.insertOne(userInfo);
       res.send(result);
     });

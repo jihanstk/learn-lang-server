@@ -46,16 +46,39 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
     const classesCollection = client.db("CourseBD").collection("classes");
+    const userCollection = client.db("CourseBD").collection("user");
 
     // instructors Route
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      if (user?.role !== "admin") {
+        return res
+          .status(403)
+          .send({ error: true, message: "forbidden message" });
+      }
+      next();
+    };
+    const verifyInstructor = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      if (user?.role !== "instructor") {
+        return res
+          .status(403)
+          .send({ error: true, message: "forbidden message" });
+      }
+      next();
+    };
 
     app.get("/all-classes", async (req, res) => {
       const result = await classesCollection.find().toArray();
       res.send(result);
     });
-    app.get("/my-classes", verifyJWT, async (req, res) => {
+    app.get("/my-classes", verifyJWT, verifyInstructor, async (req, res) => {
       const instructorEmail = req.query.email;
-      console.log(instructorEmail);
+      //   console.log(instructorEmail);
       const filter = {
         email: instructorEmail,
       };
@@ -66,6 +89,42 @@ async function run() {
       const singleClass = req.body;
       console.log(singleClass);
       const result = await classesCollection.insertOne(singleClass);
+      res.send(result);
+    });
+
+    // User Route
+    app.get("/user/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      console.log(email);
+      //   if (req.decoded.email !== email) {
+      //     res.send({ admin: false });
+      //   }
+
+      const query = { email: email };
+      const result = await userCollection.findOne(query);
+      //   const result = { admin: user?.role == "admin" };
+      res.send(result);
+    });
+    // app.get(
+    //   "/user/instructor/:email",
+    //   verifyJWT,
+    //   verifyInstructor,
+    //   async (req, res) => {
+    //     const email = req.params.email;
+    //     if (req.decoded.email !== email) {
+    //       res.send({ instructor: false });
+    //     }
+
+    //     const query = { email: email };
+    //     const user = await userCollection.findOne(query);
+    //     const result = { instructor: user?.role == "instructor" };
+    //     res.send(result);
+    //   }
+    // );
+    app.post("/user", async (req, res) => {
+      const userInfo = req.body;
+      console.log(userInfo);
+      const result = await userCollection.insertOne(userInfo);
       res.send(result);
     });
 

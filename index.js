@@ -2,7 +2,7 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 require("dotenv").config();
 const port = process.env.PORT || 5010;
@@ -91,14 +91,61 @@ async function run() {
       const result = await classesCollection.insertOne(singleClass);
       res.send(result);
     });
+    app.patch("/add-classes", async (req, res) => {
+      const classStatus = req.body;
+      console.log(classStatus);
+
+      const filter = {
+        _id: new ObjectId(classStatus.id),
+      };
+      const updateStatus = {
+        $set: {
+          status: classStatus.status,
+        },
+      };
+      const result = await classesCollection.updateOne(filter, updateStatus);
+      res.send(result);
+    });
 
     // User Route
+    app.get("/user", async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
     app.get("/user/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
       console.log(email);
       if (req.decoded.email !== email) {
         res.send({ error: true, message: "Unauthorize Access" });
       }
+      app.patch("/user/:email", async (req, res) => {
+        const email = req.params.email;
+        console.log(email);
+        const filter = {
+          email: email,
+        };
+        const updateRole = {
+          $set: {
+            role: "instructor",
+          },
+        };
+        const result = await userCollection.updateOne(filter, updateRole);
+        res.send(result);
+      });
+      app.patch("/user/mkadmin/:email", async (req, res) => {
+        const email = req.params.email;
+        console.log(email);
+        const filter = {
+          email: email,
+        };
+        const updateRole = {
+          $set: {
+            role: "admin",
+          },
+        };
+        const result = await userCollection.updateOne(filter, updateRole);
+        res.send(result);
+      });
 
       const query = { email: email };
       const result = await userCollection.findOne(query);
@@ -109,7 +156,7 @@ async function run() {
     app.post("/user", async (req, res) => {
       const userInfo = req.body;
       console.log(userInfo);
-      const query = { email: user.email };
+      const query = { email: userInfo.email };
       const existingUser = await userCollection.findOne(query);
       if (existingUser) {
         return res.send({ message: "user already exists" });

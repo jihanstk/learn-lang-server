@@ -47,6 +47,9 @@ async function run() {
     await client.connect();
     const classesCollection = client.db("CourseBD").collection("classes");
     const userCollection = client.db("CourseBD").collection("user");
+    const selectClassCollection = client
+      .db("CourseBD")
+      .collection("selectClass");
 
     // instructors Route
     const verifyAdmin = async (req, res, next) => {
@@ -114,13 +117,13 @@ async function run() {
     });
     app.get("/user/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
-      console.log(email);
+      //   console.log(email);
       if (req.decoded.email !== email) {
         res.send({ error: true, message: "Unauthorize Access" });
       }
       app.patch("/user/:email", async (req, res) => {
         const email = req.params.email;
-        console.log(email);
+        // console.log(email);
         const filter = {
           email: email,
         };
@@ -134,7 +137,7 @@ async function run() {
       });
       app.patch("/user/mkadmin/:email", async (req, res) => {
         const email = req.params.email;
-        console.log(email);
+        // console.log(email);
         const filter = {
           email: email,
         };
@@ -155,13 +158,30 @@ async function run() {
 
     app.post("/user", async (req, res) => {
       const userInfo = req.body;
-      console.log(userInfo);
+      //   console.log(userInfo);
       const query = { email: userInfo.email };
       const existingUser = await userCollection.findOne(query);
       if (existingUser) {
         return res.send({ message: "user already exists" });
       }
       const result = await userCollection.insertOne(userInfo);
+      res.send(result);
+    });
+
+    // Select Class
+    app.get("/all-selectClass/:email", async (req, res) => {
+      const userEmail = req.params.email;
+      console.log(userEmail);
+      const query = {
+        email: userEmail,
+      };
+      const result = await selectClassCollection.find(query).toArray();
+      res.send(result);
+    });
+    app.post("/selectClass", async (req, res) => {
+      const classInfo = req.body;
+      //   console.log(classInfo);
+      const result = await selectClassCollection.insertOne(classInfo);
       res.send(result);
     });
 

@@ -97,6 +97,12 @@ async function run() {
       const result = await classesCollection.insertOne(singleClass);
       res.send(result);
     });
+    app.post("/popular-classes", async (req, res) => {
+      const singleClass = req.body;
+      console.log(singleClass);
+      const result = await classesCollection.insertOne(singleClass);
+      res.send(result);
+    });
     app.patch("/add-classes", async (req, res) => {
       const classStatus = req.body;
       console.log(classStatus);
@@ -114,7 +120,7 @@ async function run() {
     });
 
     // User Route
-    app.get("/user", async (req, res) => {
+    app.get("/user", verifyJWT, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
@@ -130,7 +136,7 @@ async function run() {
       const result = await userCollection.findOne(query);
       res.send(result);
     });
-    app.patch("/user/:email", async (req, res) => {
+    app.patch("/user/:email", verifyJWT, verifyAdmin, async (req, res) => {
       const email = req.params.email;
       // console.log(email);
       const filter = {
@@ -144,20 +150,25 @@ async function run() {
       const result = await userCollection.updateOne(filter, updateRole);
       res.send(result);
     });
-    app.patch("/user/mkadmin/:email", async (req, res) => {
-      const email = req.params.email;
-      // console.log(email);
-      const filter = {
-        email: email,
-      };
-      const updateRole = {
-        $set: {
-          role: "admin",
-        },
-      };
-      const result = await userCollection.updateOne(filter, updateRole);
-      res.send(result);
-    });
+    app.patch(
+      "/user/mkadmin/:email",
+      verifyJWT,
+      verifyAdmin,
+      async (req, res) => {
+        const email = req.params.email;
+        // console.log(email);
+        const filter = {
+          email: email,
+        };
+        const updateRole = {
+          $set: {
+            role: "admin",
+          },
+        };
+        const result = await userCollection.updateOne(filter, updateRole);
+        res.send(result);
+      }
+    );
 
     //   const query = { email: email };
     //   const result = await userCollection.findOne(query);
@@ -178,7 +189,7 @@ async function run() {
     });
 
     // Select Class
-    app.get("/all-selectClass/:email", async (req, res) => {
+    app.get("/all-selectClass/:email", verifyJWT, async (req, res) => {
       const userEmail = req.params.email;
       console.log(userEmail);
       const query = {
@@ -193,7 +204,7 @@ async function run() {
       const result = await selectClassCollection.insertOne(classInfo);
       res.send(result);
     });
-    app.delete("/selectClass/:id", async (req, res) => {
+    app.delete("/selectClass/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
 
       const filter = {
@@ -211,7 +222,7 @@ async function run() {
         currency: "usd",
         payment_method_types: ["card"],
       });
-      app.post("/payments", async (req, res) => {
+      app.post("/payments", verifyJWT, async (req, res) => {
         const payment = req.body;
         console.log(payment);
         const insertResult = await paymentCollection.insertOne(payment);
@@ -234,10 +245,21 @@ async function run() {
         _id: new ObjectId(id),
       };
       const updatedDoc = {
-        $inc: { sit: -1 },
+        $inc: { sit: -1, totalStudent: 1 },
       };
       const result = await classesCollection.updateOne(filter, updatedDoc);
       res.send({ result });
+    });
+
+    // enrolled Class retrieve
+
+    app.get("/enroll-classes/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const query = {
+        email: email,
+      };
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
     });
 
     // JWT Route

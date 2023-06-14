@@ -78,17 +78,31 @@ async function run() {
       next();
     };
 
-    app.get("/all-classes", async (req, res) => {
+    app.get("/all-classes", verifyJWT, async (req, res) => {
       const result = await classesCollection.find().toArray();
       res.send(result);
     });
-    app.get("/my-classes", verifyJWT, verifyInstructor, async (req, res) => {
+    app.get("/my-classes", verifyJWT, async (req, res) => {
       const instructorEmail = req.query.email;
       //   console.log(instructorEmail);
       const filter = {
         email: instructorEmail,
       };
       const result = await classesCollection.find(filter).toArray();
+      res.send(result);
+    });
+    app.patch("/feedback-classes", async (req, res) => {
+      const feedback = req.body;
+
+      const filter = {
+        _id: new ObjectId(feedback.id),
+      };
+      const updatedDoc = {
+        $set: {
+          feedback: feedback.reason,
+        },
+      };
+      const result = await classesCollection.updateOne(filter, updatedDoc);
       res.send(result);
     });
     app.post("/add-classes", async (req, res) => {
@@ -126,6 +140,13 @@ async function run() {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
+    app.get("/instructors", async (req, res) => {
+      const query = {
+        role: "instructor",
+      };
+      const result = await userCollection.find(query).toArray();
+      res.send(result);
+    });
     app.get("/user/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
       const query = {
@@ -138,7 +159,7 @@ async function run() {
       const result = await userCollection.findOne(query);
       res.send(result);
     });
-    app.patch("/user/:email", verifyJWT, verifyAdmin, async (req, res) => {
+    app.patch("/user/:email", async (req, res) => {
       const email = req.params.email;
       // console.log(email);
       const filter = {
@@ -154,8 +175,7 @@ async function run() {
     });
     app.patch(
       "/user/mkadmin/:email",
-      verifyJWT,
-      verifyAdmin,
+
       async (req, res) => {
         const email = req.params.email;
         // console.log(email);
@@ -171,12 +191,6 @@ async function run() {
         res.send(result);
       }
     );
-
-    //   const query = { email: email };
-    //   const result = await userCollection.findOne(query);
-    //   //   const result = { admin: user?.role == "admin" };
-    //   res.send(result);
-    // });
 
     app.post("/user", async (req, res) => {
       const userInfo = req.body;
@@ -239,6 +253,15 @@ async function run() {
         clientSecret: paymentIntent.client_secret,
       });
     });
+    app.get("/payment-history/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      console.log(email);
+      const query = { email: email };
+      const result = await paymentCollection.find(query).toArray();
+
+      res.send(result);
+    });
+
     // decrement  sit number.
     app.patch("/pay-classes", async (req, res) => {
       const id = req.body.id;

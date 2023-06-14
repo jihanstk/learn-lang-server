@@ -216,7 +216,7 @@ async function run() {
         console.log(payment);
         const insertResult = await paymentCollection.insertOne(payment);
 
-        const query = { _id: new ObjectId(payment?.payClass) };
+        const query = { id: payment?.payClass };
         const deleteResult = await selectClassCollection.deleteOne(query);
 
         res.send({ insertResult, deleteResult });
@@ -228,16 +228,16 @@ async function run() {
     });
     // decrement  sit number.
     app.patch("/pay-classes", async (req, res) => {
-      const id = req.body;
+      const id = req.body.id;
+
       const filter = {
         _id: new ObjectId(id),
       };
       const updatedDoc = {
-        $set: {
-          $inc: { sit: -1 },
-        },
+        $inc: { sit: -1 },
       };
-      const result = await classesCollection.updateOne(filter);
+      const result = await classesCollection.updateOne(filter, updatedDoc);
+      res.send({ result });
     });
 
     // JWT Route

@@ -1,6 +1,8 @@
 const express = require("express");
 const app = express();
+require("dotenv").config();
 const cors = require("cors");
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
@@ -47,6 +49,7 @@ async function run() {
     await client.connect();
     const classesCollection = client.db("CourseBD").collection("classes");
     const userCollection = client.db("CourseBD").collection("user");
+    const paymentCollection = client.db("CourseBD").collection("payment");
     const selectClassCollection = client
       .db("CourseBD")
       .collection("selectClass");
@@ -117,44 +120,50 @@ async function run() {
     });
     app.get("/user/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
+      const query = {
+        email: email,
+      };
       //   console.log(email);
-      if (req.decoded.email !== email) {
-        res.send({ error: true, message: "Unauthorize Access" });
+      if (req.decoded?.email !== email) {
+        return res.send({ error: true, message: "Unauthorize Access" });
       }
-      app.patch("/user/:email", async (req, res) => {
-        const email = req.params.email;
-        // console.log(email);
-        const filter = {
-          email: email,
-        };
-        const updateRole = {
-          $set: {
-            role: "instructor",
-          },
-        };
-        const result = await userCollection.updateOne(filter, updateRole);
-        res.send(result);
-      });
-      app.patch("/user/mkadmin/:email", async (req, res) => {
-        const email = req.params.email;
-        // console.log(email);
-        const filter = {
-          email: email,
-        };
-        const updateRole = {
-          $set: {
-            role: "admin",
-          },
-        };
-        const result = await userCollection.updateOne(filter, updateRole);
-        res.send(result);
-      });
-
-      const query = { email: email };
       const result = await userCollection.findOne(query);
-      //   const result = { admin: user?.role == "admin" };
       res.send(result);
     });
+    app.patch("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      // console.log(email);
+      const filter = {
+        email: email,
+      };
+      const updateRole = {
+        $set: {
+          role: "instructor",
+        },
+      };
+      const result = await userCollection.updateOne(filter, updateRole);
+      res.send(result);
+    });
+    app.patch("/user/mkadmin/:email", async (req, res) => {
+      const email = req.params.email;
+      // console.log(email);
+      const filter = {
+        email: email,
+      };
+      const updateRole = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await userCollection.updateOne(filter, updateRole);
+      res.send(result);
+    });
+
+    //   const query = { email: email };
+    //   const result = await userCollection.findOne(query);
+    //   //   const result = { admin: user?.role == "admin" };
+    //   res.send(result);
+    // });
 
     app.post("/user", async (req, res) => {
       const userInfo = req.body;
@@ -183,6 +192,52 @@ async function run() {
       //   console.log(classInfo);
       const result = await selectClassCollection.insertOne(classInfo);
       res.send(result);
+    });
+    app.delete("/selectClass/:id", async (req, res) => {
+      const id = req.params.id;
+
+      const filter = {
+        _id: new ObjectId(id),
+      };
+      const result = await selectClassCollection.deleteOne(filter);
+      res.send(result);
+    });
+    // create payment intent
+    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      app.post("/payments", async (req, res) => {
+        const payment = req.body;
+        console.log(payment);
+        const insertResult = await paymentCollection.insertOne(payment);
+
+        const query = { _id: new ObjectId(payment?.payClass) };
+        const deleteResult = await selectClassCollection.deleteOne(query);
+
+        res.send({ insertResult, deleteResult });
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+    // decrement  sit number.
+    app.patch("/pay-classes", async (req, res) => {
+      const id = req.body;
+      const filter = {
+        _id: new ObjectId(id),
+      };
+      const updatedDoc = {
+        $set: {
+          $inc: { sit: -1 },
+        },
+      };
+      const result = await classesCollection.updateOne(filter);
     });
 
     // JWT Route

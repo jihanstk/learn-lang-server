@@ -97,10 +97,12 @@ async function run() {
       const result = await classesCollection.insertOne(singleClass);
       res.send(result);
     });
-    app.post("/popular-classes", async (req, res) => {
-      const singleClass = req.body;
-      console.log(singleClass);
-      const result = await classesCollection.insertOne(singleClass);
+    app.get("/popular-classes", async (req, res) => {
+      const result = await classesCollection
+        .find()
+        .sort({ totalStudent: "-1" })
+        .limit(6)
+        .toArray();
       res.send(result);
     });
     app.patch("/add-classes", async (req, res) => {
